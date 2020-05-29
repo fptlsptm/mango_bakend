@@ -128,7 +128,7 @@ var cookie_prefix = "<?php echo config_item('cookie_prefix'); ?>";
 		</div>
 		<!-- end header -->
 		<div class="contents">
-			<?php echo element('menu_title', $layout) ? '<h3>' . element('menu_title', $layout) . '</h3>' : ''; ?>
+	
 
 			<!-- 여기까지 레이아웃 상단입니다 -->
 

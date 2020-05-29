@@ -25,3 +25,4 @@ $config['admin_page_menu']['member'] =
 			'dormant'				=> array('휴면계정관리', ''),
 		),
 	);
+$config['admin_page_menu']=[];
