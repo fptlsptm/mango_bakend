@@ -40,9 +40,10 @@ protected $models = array('Common','Member','Check','Mem_check');
 				if($val != "" && $val != "4"){
 					$mc_data[$key] = $val;
 				}
+				if($val == "0"){
+					$mc_data[$key] = $val;
+				}
 			}
-
-			
 			// for ($i=0; $i <count($mc); $i++){
 			// 	$mc_data[''] =
 			// }
@@ -53,7 +54,12 @@ protected $models = array('Common','Member','Check','Mem_check');
 		//echo json_encode($mc,JSON_UNESCAPED_UNICODE);
     //var_dump($mc);
   }
-
+	public function info($mem_userid){
+		$wh['mem_userid'] = $mem_userid;
+		$wh['mc_date'] = date("Y-m-d");
+		$rs = $this->Mem_check_model->get_one("","*",$wh);
+		echo json_encode($rs,JSON_UNESCAPED_UNICODE);
+	}
 
 }
 

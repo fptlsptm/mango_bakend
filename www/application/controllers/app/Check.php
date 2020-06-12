@@ -4,7 +4,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 class Check extends CB_Controller
 {
 
-protected $models = array('Common','Member','Check');
+protected $models = array('Common','Member','Check',"Sang_date");
 
 	protected $helpers = array('form', 'array', 'string','json','basic');
 
@@ -37,10 +37,36 @@ protected $models = array('Common','Member','Check');
   }
 	public function update_q3($mem_userid){
 		$where['mem_userid'] = $mem_userid;
-		$data['q3'] = $this->input->post("q3");
-		$this->Check_model->update("",$data,$where);
-		$this->cal_data($mem_userid);
+		$data['ch_sang'] = $this->input->post("ch_sang");
+		if($data['ch_sang'] == "Y"){
+				$data['q3'] = date("Y-m-d");
+		}
+		if($data['ch_sang'] == "N"){
+				$data['ch_last_day'] = date("Y-m-d");
+				$ch = $this->Check_model->get_one("","q3",$where);
+				$sa['mem_userid'] = $mem_userid;
+				$sa['sa_start'] = $ch['q3'];
+				$sa['sa_end'] = date("Y-m-d");
+				$this->Sang_date_model->insert($sa);
+		}
+		if($mem_userid != ""){
+				$this->Check_model->update("",$data,$where);
+		}
   }
+	public function check_info($mem_userid){
+		if($mem_userid != "" && $mem_userid != undefined && $mem_userid != null){
+			$where['mem_userid'] = $mem_userid;
+			$ch = $this->Check_model->get_one("","",$where);
+			echo json_encode($ch,JSON_UNESCAPED_UNICODE);
+		}
+	}
+	public function ip_test(){
+		echo $_SERVER['X_REAL_IP'];
+		echo "<br>";
+		echo $_SERVER['REMOTE_ADDR'];
+		echo "<br>";
+		echo $_SERVER['HTTP_X_FORWARDED_FOR'];
+	}
 
   public function get_check($mem_userid){
     $wh['mem_userid'] = $mem_userid;
@@ -56,8 +82,8 @@ protected $models = array('Common','Member','Check');
 
 	public function cal_data($mem_userid){
     $wh['mem_userid'] = $mem_userid;
-    $ch = $this->Check_model->get_one("","q3,q4,q5,ch_com",$wh);
-		$ba_sub = $ch['q4']-14+$ch['q5'];
+    $ch = $this->Check_model->get_one("","q3,q4,q5,ch_com,ch_sang",$wh);
+		$ba_sub = $ch['q5']-14;
 
 		// 생리 일자 디데이 계산
 		$sang_time = strtotime("{$ch['q3']} +{$ch['q5']} days");
@@ -68,15 +94,13 @@ protected $models = array('Common','Member','Check');
 		$interval = $date1->diff($date2);
 		if($date1 > $date2){
 				$dday = -1*$interval->days;
-				$rs['msg'] = "생리일자가 {$interval->days}일 남았습니다 ";
+				$rs['msg'] = "생리예정일이 {$interval->days}일 남았습니다.";
 		}else {
-				$dday = "+".$interval->days;
-				$rs['msg'] = "생리일자가 {$interval->days}일 지났습니다";
+				$dday = "+ ".$interval->days;
+				$rs['msg'] = "생리예정일이 {$interval->days}일 지났습니다.";
 		}
 		$rs['dday'] = $dday;
 		$rs['sang_day'] = $sang_day;
-
-
 		//가임기
 		for ($i=$ba_sub-5; $i < $ba_sub+3 ; $i++) {
 			$ga_date = strtotime("{$ch['q3']} +{$i} days");
@@ -85,15 +109,27 @@ protected $models = array('Common','Member','Check');
 		$ba_date = strtotime("{$ch['q3']} +{$ba_sub} days");
 		$ba = date('Y-m-d',$ba_date); // 배란일
 
-		//생리주기
-		for ($i=$ch['q5']-3; $i < 4+$ch['q5'] ; $i++) {
+		//생리예측주기
+		for ($i=$ch['q5']-3; $i < 3+$ch['q5']+$ch['q4'] ; $i++) {
 			$date = strtotime("{$ch['q3']} +{$i} days");
 			$sangArr[] = date('Y-m-d',$date);
 		}
 
-		for ($i=0; $i < $ch['q4'] ; $i++) {
+		//생리가능주기
+		for ($i=$ch['q5']; $i < $ch['q5']+$ch['q4'] ; $i++) {
 			$date = strtotime("{$ch['q3']} +{$i} days");
-			$sangArr[] = date('Y-m-d',$date);
+			$canSangArr[] = date('Y-m-d',$date);
+		}
+
+		// for ($i=0; $i < $ch['q4'] ; $i++) {
+		// 	$date = strtotime("{$ch['q3']} +{$i} days");
+		// 	$sangArr[] = date('Y-m-d',$date);
+		// }
+
+		if($ch['q3'] == ""){
+			$q3 = date('Y-m-d');
+		}else {
+			$q3 = $ch['q3'];
 		}
 
 		$q3_date = strtotime("{$ch['q3']} +1 month");
@@ -102,7 +138,7 @@ protected $models = array('Common','Member','Check');
 		$q3_date2 = strtotime("{$ch['q3']} +2 month");
 		$q3_2 = date('Y-m-d',$q3_date2); // 배란일
 
-		$q3arr[] = explode("-",$ch['q3']);
+		$q3arr[] = explode("-",$q3);
 		$q3arr[] = explode("-",$q3_1);
 		$q3arr[] = explode("-",$q3_2);
 
@@ -115,27 +151,35 @@ protected $models = array('Common','Member','Check');
 		if($nDate == $ba){
 			$rs['msg'] = "오늘은 배란일 입니다";
 		}
-		$rs['q3arr'] = $q3arr;
-		$rs['gaArr'] = $gaArr;
-		$rs['ba'] = $ba;
-
+		if($nDate == $ba){
+			$rs['msg'] = "오늘은 배란일 입니다";
+		}
+		if($ch['ch_sang'] == "Y"){
+			$st = new DateTime($ch['q3']);
+			$en = new DateTime(date("Y-m-d"));
+			$df = date_diff($st,$en);
+			$df_days = $df->days+1;
+			$rs['smsg'] = "생리 {$df_days}일째";
+			//$rs['smsg'] = "";
+		}
+		$rs['ch_sang'] = $ch['ch_sang'];
 		$rs['ch_com'] = $ch['ch_com'];
-		$rs['sangArr'] = $sangArr;
-
+		$rs['q3arr'] = $q3arr;
+		$rs['q3'] = $ch['q3'];
+		if($ch['q3'] != ""){
+			$rs['gaArr'] = $gaArr;
+			$rs['sangArr'] = $sangArr;
+			$rs['canSangArr'] = $canSangArr;
+			$rs['ba'] = $ba;
+		}else {
+			$rs['dday'] = "- NO";
+			$rs['msg'] = "최근 생리일자가 없습니다";
+			$rs['gaArr'] = [];
+			$rs['sangArr'] = [];
+			$rs['canSangArr'] = [];
+		}
 		echo json_encode($rs,JSON_UNESCAPED_UNICODE);
-
   }
-
-
-	public function ip_test(){
-		echo $_SERVER['X_REAL_IP'];
-		echo "<br>";
-		echo $_SERVER['REMOTE_ADDR'];
-		echo "<br>";
-		echo $_SERVER['HTTP_X_FORWARDED_FOR'];
-	}
-
-
 }
 
 // /$this->Json_log_model->add_log();
