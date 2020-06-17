@@ -90,16 +90,20 @@ protected $models = array('Common','Member','Check',"Sang_date");
 		$nDate = date("Y-m-d");
 		$sang_day = date('Y-m-d',$sang_time); // 생리일
 		$date1 = new DateTime($sang_day);
-		$date2 = new DateTime("now");
-		$interval = $date1->diff($date2);
+		$date2 = new DateTime($nDate); // 오늘
+		$interval = date_diff($date1,$date2);
+
 		if($date1 > $date2){
-				$dday = -1*$interval->days;
+				$dday = -1*($interval->days);
 				$rs['msg'] = "생리예정일이 {$interval->days}일 남았습니다.";
 		}else {
-				$dday = "+ ".$interval->days;
+				$dday = "+ ".($interval->days);
 				$rs['msg'] = "생리예정일이 {$interval->days}일 지났습니다.";
 		}
 		$rs['dday'] = $dday;
+		if($interval->days === 0){
+			$rs['dday'] = "+ 0";
+		}
 		$rs['sang_day'] = $sang_day;
 		//가임기
 		for ($i=$ba_sub-5; $i < $ba_sub+3 ; $i++) {
